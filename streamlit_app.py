@@ -513,7 +513,11 @@ def main() -> None:
     )
 
     chart = make_dashboard_chart(df_model, df_all, loadings, coverage)
-    st.altair_chart(chart, use_container_width=True)
+    if "chart_version" not in st.session_state:
+        st.session_state.chart_version = 0
+    if st.button("Reset selections (clear filters/brush)", type="secondary"):
+        st.session_state.chart_version += 1
+    st.altair_chart(chart, use_container_width=True, key=f"main_chart_{st.session_state.chart_version}")
 
     with st.expander("Indicators used (2019)"):
         st.write(pd.DataFrame([{"Code": c, "Indicator": FRIENDLY.get(c, c)} for c in WDI_COLS]))
