@@ -1,0 +1,56 @@
+Which modelling approach did you implement? Give a short description (3-4 sentences) of your
+  implementation and the results.
+ 
+  Answer text Question 1
+  I implemented a PCA + KMeans clustering approach to group countries into a small number of
+  similar structural profiles using their 2019 indicators (GDP, health spending, internet use,
+  air passengers, population, etc.), and then compared how these profiles differed in the 2020
+  tourism shock (shock_2020). I preprocessed the indicators with median imputation for missing
+  values, applied log transforms to heavily skewed variables (e.g., GDP), and standardised all
+  features so variables are comparable. PCA reduced the 10 indicators to two dimensions
+  capturing approx 64.5% of the variation, and I selected the number of clusters using
+  silhouette score over k =2–5, which chose k = 4. The resulting clusters show differences in
+  shock severity: one cluster had a smaller mean drop (−61.7%) while the others were closer to
+  the global collapse range (approx −71% to −73%).
+ 
+  Question 2
+  Complete
+  Marked out of 3.00
+  Flag question
+  Question text
+  Upload your visualization.
+ 
+  Answer files Question 2
+  Image (PNG) task3_model_pca_kmeans.png
+  Question 3
+  Complete
+  Marked out of 1.00
+  Flag question
+  Question text
+  Why is this visualization the best representation of your approach/results?
+ 
+  Answer text Question 3
+  This visualisation is best suited to my approach because it shows the clustering outcome, the
+  differences in tourism shock between clusters, and what the PCA axes mean—so the method and
+  results are interpretable in one figure.
+ 
+  The PCA scatter plot directly displays the model’s output: countries that are close together
+  have similar structural characteristics, and the cluster colours indicate the KMeans
+  groupings.
+ 
+  The bar chart summarises the main result by comparing the average shock across clusters,
+  allowing the reader to quickly see whether certain country types experienced a smaller shock
+  than others.
+ 
+  The PCA loadings panel explains what the two axes represent by showing which indicators drive
+  the separation, making the clustering interpretable rather than a black box.
+ 
+  Question 4
+  Complete
+  Marked out of 1.00
+  Flag question
+  Question text
+  Did you use AI in your workflow? If yes, please upload a summary of the 4-10 most important
+  prompts that helped you to reach your goal.
+  Answer files Question 4
+  Word 2007 document Task3_Model_AI_Prompts.docx
