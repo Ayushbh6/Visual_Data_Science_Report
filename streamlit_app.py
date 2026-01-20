@@ -49,6 +49,9 @@ FRIENDLY = {
     "IS.AIR.PSGR": "Air passengers",
 }
 
+ALT_GDP_PCAP = r"NY\.GDP\.PCAP\.CD"
+ALT_IT_NET = r"IT\.NET\.USER\.ZS"
+
 
 def _iso_like_country_code(series: pd.Series) -> pd.Series:
     return series.astype(str).str.match(r"^[A-Z]{2,3}$", na=False)
@@ -223,32 +226,32 @@ def make_dashboard_chart(
 
     cluster_sel = alt.selection_point(name="cluster_sel", fields=["cluster_label"], on="click", empty="all")
     country_sel = alt.selection_point(name="country_sel", fields=["country_code"], on="click", empty="none")
+    pca_brush = alt.selection_interval(name="pca_brush", encodings=["x", "y"], empty="all")
 
     base_model = alt.Chart(df_model).transform_filter(cluster_sel)
 
     pca_scatter = (
         base_model.mark_circle(stroke="white", strokeWidth=0.5)
         .encode(
-            x=alt.X("PC1:Q", title="PC1 (structural dimension 1)"),
-            y=alt.Y("PC2:Q", title="PC2 (structural dimension 2)"),
+            x=alt.X("PC1:Q", title="PC1 (Principal Component 1 — structural index)"),
+            y=alt.Y("PC2:Q", title="PC2 (Principal Component 2 — structural index)"),
             color=alt.Color("cluster_label:N", title="Cluster"),
             size=alt.Size("shock_pct:Q", title="Shock magnitude (%)", legend=None, scale=alt.Scale(range=[30, 250])),
-            opacity=alt.condition(country_sel, alt.value(1.0), alt.value(0.55)),
+            opacity=alt.condition(pca_brush, alt.value(0.9), alt.value(0.25)),
             tooltip=[
                 alt.Tooltip("country_name_tourism:N", title="Country"),
                 alt.Tooltip("cluster_label:N", title="Cluster"),
                 alt.Tooltip("shock_pct:Q", title="2020 shock (%)", format=".1f"),
-                alt.Tooltip("NY.GDP.PCAP.CD:Q", title="GDP per capita (US$)", format=",.0f"),
-                alt.Tooltip("IT.NET.USER.ZS:Q", title="Internet users (%)", format=".1f"),
+                alt.Tooltip(f"{ALT_GDP_PCAP}:Q", title="GDP per capita (US$)", format=",.0f"),
+                alt.Tooltip(f"{ALT_IT_NET}:Q", title="Internet users (%)", format=".1f"),
             ],
         )
-        .add_params(country_sel)
+        .add_params(country_sel, pca_brush)
         .properties(
             title="1) PCA map (2019 indicators) — click a country",
             width=520,
             height=330,
         )
-        .interactive()
     )
 
     shock_by_cluster = (
@@ -288,7 +291,7 @@ def make_dashboard_chart(
         .mark_bar(color="#74add1")
         .encode(
             x=alt.X("PC1_loading:Q", title="PC1 loading (signed)"),
-            y=alt.Y("feature_label:N", title=None, sort="-x"),
+            y=alt.Y("feature_label:N", title=None, sort="-x", axis=alt.Axis(labelLimit=260)),
             tooltip=[alt.Tooltip("feature_label:N", title="Indicator"), alt.Tooltip("PC1_loading:Q", format=".3f")],
         )
         .properties(title="PC1 drivers (top 5)", width=360, height=120)
@@ -301,7 +304,7 @@ def make_dashboard_chart(
         .mark_bar(color="#f46d43")
         .encode(
             x=alt.X("PC2_loading:Q", title="PC2 loading (signed)"),
-            y=alt.Y("feature_label:N", title=None, sort="-x"),
+            y=alt.Y("feature_label:N", title=None, sort="-x", axis=alt.Axis(labelLimit=260)),
             tooltip=[alt.Tooltip("feature_label:N", title="Indicator"), alt.Tooltip("PC2_loading:Q", format=".3f")],
         )
         .properties(title="PC2 drivers (top 5)", width=360, height=120)
@@ -348,10 +351,11 @@ def make_dashboard_chart(
     gdp_scatter = (
         base_model.mark_circle(stroke="white", strokeWidth=0.5)
         .transform_filter(alt.datum["NY.GDP.PCAP.CD"] > 0)
+        .transform_filter(pca_brush)
         .transform_filter(alt.datum.shock_pct <= 0)
         .encode(
             x=alt.X(
-                "NY.GDP.PCAP.CD:Q",
+                f"{ALT_GDP_PCAP}:Q",
                 title="GDP per capita (2019, US$, log)",
                 scale=alt.Scale(type="log", clamp=True),
             ),
@@ -366,7 +370,7 @@ def make_dashboard_chart(
                 alt.Tooltip("country_name_tourism:N", title="Country"),
                 alt.Tooltip("cluster_label:N", title="Cluster"),
                 alt.Tooltip("shock_pct:Q", title="2020 shock (%)", format=".1f"),
-                alt.Tooltip("NY.GDP.PCAP.CD:Q", title="GDP per capita (US$)", format=",.0f"),
+                alt.Tooltip(f"{ALT_GDP_PCAP}:Q", title="GDP per capita (US$)", format=",.0f"),
             ],
         )
         .properties(
@@ -379,6 +383,7 @@ def make_dashboard_chart(
     dependence_scatter = (
         base_model.mark_circle(stroke="white", strokeWidth=0.5)
         .transform_filter(alt.datum.arrivals_per_1000 > 0)
+        .transform_filter(pca_brush)
         .transform_filter(alt.datum.shock_pct <= 0)
         .encode(
             x=alt.X(
@@ -410,6 +415,7 @@ def make_dashboard_chart(
     shock_hist = (
         alt.Chart(df_model)
         .transform_filter(cluster_sel)
+        .transform_filter(pca_brush)
         .transform_filter(alt.datum.shock_pct <= 0)
         .mark_bar(color="#fb8072")
         .encode(
@@ -443,7 +449,8 @@ def make_dashboard_chart(
             [
                 {
                     "text": (
-                        "How to use: (a) Click a bar to filter clusters, (b) click a country in the PCA map to show its 2018–2020 trend. "
+                        "How to use: (a) Click a bar to filter clusters, (b) click a country in the PCA map to show its 2018–2020 trend, "
+                        "(c) drag a rectangle on the PCA map to brush a subset and see linked views update. "
                         "This dashboard uses the PCA + KMeans model from Task 3 and links all views via shared selections."
                     )
                 }
@@ -486,6 +493,17 @@ def main() -> None:
         f"Across countries, the **mean 2020 shock is {mean_shock:.1f}%** (median {median_shock:.1f}%)."
     )
     st.caption("Interpretation note: this is a descriptive, unsupervised model (country ‘types’) — it shows patterns/associations, not causality.")
+
+    with st.expander("Glossary (what the short forms mean)", expanded=False):
+        st.markdown(
+            "- **PCA** = Principal Component Analysis: a way to compress many correlated indicators into a few summary dimensions.\n"
+            "- **PC1 / PC2** = Principal Component 1 / 2: the first two PCA dimensions. Each is a weighted combination of the 2019 indicators; countries close together on the PCA map have similar 2019 profiles.\n"
+            "- **KMeans** = a clustering method that groups countries into k “types” based on similarity in the PCA space.\n"
+            "- **Silhouette score** = a clustering quality score (higher is better separation).\n"
+            "- **WDI** = World Development Indicators (World Bank).\n"
+            "- **GDP** = Gross Domestic Product; **US$** = US dollars.\n"
+            "- **shock_2020** = percentage change in tourism arrivals from 2019 to 2020."
+        )
 
     st.markdown(
         "- **Main idea:** Countries with similar 2019 “structure” (economy, connectivity, health, population) are grouped into clusters, then we compare how hard each cluster was hit in 2020.\n"
